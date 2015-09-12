@@ -7,9 +7,34 @@
     android:layout_height="fill_parent"
     tools:context=".BarcodeScannerFragment">
 
-    <TextView android:layout_width="wrap_content"
-              android:layout_height="wrap_content"
-              android:id="@+id/txtContent"/>
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:text="Camera: "/>
+
+        <Spinner
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/cameraSpinner" />
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_weight="1"
+        android:id="@+id/cameraFrame" />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/imgview"/>
 
     <Button
         android:layout_width="wrap_content"
@@ -19,9 +44,9 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true" />
 
-    <ImageView
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/imgview"/>
+        android:id="@+id/txtContent"/>
 
 </LinearLayout>

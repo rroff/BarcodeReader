@@ -9,24 +9,37 @@ package rroff.roff.us.barcodereader;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 
+import rroff.roff.us.barcodereader.camera.CameraAdapter;
+import rroff.roff.us.barcodereader.camera.CameraPreview;
+import rroff.roff.us.barcodereader.camera.CameraUtility;
+
 public class BarcodeScannerFragment extends Fragment {
 
     private final String LOG_TAG = BarcodeScannerFragment.class.getSimpleName();
+
+    private Camera mCamera;
+
+    private CameraAdapter mCameraAdapter;
 
     private BarcodeDetector mDetector;
 
@@ -42,6 +55,7 @@ public class BarcodeScannerFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mCamera = null;
         mDetector = new BarcodeDetector.Builder(getActivity())
                 .setBarcodeFormats(Barcode.DATA_MATRIX | Barcode.QR_CODE)
                 .build();
@@ -56,11 +70,29 @@ public class BarcodeScannerFragment extends Fragment {
         mHolder.processBtn = (Button)rootView.findViewById(R.id.button);
         mHolder.barcodeIv = (ImageView)rootView.findViewById(R.id.imgview);
         mHolder.outputTv = (TextView)rootView.findViewById(R.id.txtContent);
+        mHolder.cameraSpn = (Spinner)rootView.findViewById(R.id.cameraSpinner);
+        mHolder.cameraFrm = (FrameLayout)rootView.findViewById(R.id.cameraFrame);
 
         mHolder.processBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 // TODO
+            }
+        });
+
+        mCameraAdapter = new CameraAdapter(getActivity());
+        mCameraAdapter.addAll(CameraUtility.getCameraArray(getActivity()));
+        mHolder.cameraSpn.setAdapter(mCameraAdapter);
+        mHolder.cameraSpn.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                Log.d(LOG_TAG, "Camera " + position + " selected");
+                changeCamera(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                Log.d(LOG_TAG, "No camera selected");
             }
         });
 
@@ -75,7 +107,23 @@ public class BarcodeScannerFragment extends Fragment {
         Bitmap bitmap = BitmapFactory.decodeResource(
                 getActivity().getResources(),
                 R.drawable.puppy);
-        processBarcode(bitmap);
+        // processBarcode(bitmap);
+    }
+
+    private void changeCamera(int cameraId) {
+        if (mCamera != null) {
+            mCamera.release();
+            mCamera = null;
+        }
+
+        if (mCamera == null) {
+            mCamera = CameraUtility.getCameraInstance(getActivity(), cameraId);
+            if (mCamera != null) {
+                mHolder.cameraFrm.addView(new CameraPreview(getActivity(), mCamera));
+            } else {
+                Log.e(LOG_TAG, "Unable to access camera " + cameraId);
+            }
+        }
     }
 
     private void processBarcode(Bitmap bitmap) {
@@ -102,5 +150,7 @@ public class BarcodeScannerFragment extends Fragment {
         public Button processBtn;
         public ImageView barcodeIv;
         public TextView outputTv;
+        public Spinner cameraSpn;
+        public FrameLayout cameraFrm;
     }
 }

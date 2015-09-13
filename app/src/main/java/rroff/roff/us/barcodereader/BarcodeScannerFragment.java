@@ -7,10 +7,14 @@
  */
 package rroff.roff.us.barcodereader;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.hardware.Camera;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -30,14 +34,21 @@ import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 
 import rroff.roff.us.barcodereader.camera.CameraAdapter;
-import rroff.roff.us.barcodereader.camera.CameraPreview;
-import rroff.roff.us.barcodereader.camera.CameraUtility;
+import rroff.roff.us.barcodereader.camera.service.CameraService;
 
 public class BarcodeScannerFragment extends Fragment {
 
     private final String LOG_TAG = BarcodeScannerFragment.class.getSimpleName();
 
-    private Camera mCamera;
+    /**
+     * PlayerService binding.
+     */
+    private CameraService mBoundService;
+
+    /**
+     * CameraService binding flag.
+     */
+    private boolean mServiceBound = false;
 
     private CameraAdapter mCameraAdapter;
 
@@ -55,7 +66,6 @@ public class BarcodeScannerFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mCamera = null;
         mDetector = new BarcodeDetector.Builder(getActivity())
                 .setBarcodeFormats(Barcode.DATA_MATRIX | Barcode.QR_CODE)
                 .build();
@@ -73,16 +83,7 @@ public class BarcodeScannerFragment extends Fragment {
         mHolder.cameraSpn = (Spinner)rootView.findViewById(R.id.cameraSpinner);
         mHolder.cameraFrm = (FrameLayout)rootView.findViewById(R.id.cameraFrame);
 
-        mHolder.processBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // TODO
-            }
-        });
-
-        mCameraAdapter = new CameraAdapter(getActivity());
-        mCameraAdapter.addAll(CameraUtility.getCameraArray(getActivity()));
-        mHolder.cameraSpn.setAdapter(mCameraAdapter);
+        configureCameraSpinner();
         mHolder.cameraSpn.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -93,6 +94,13 @@ public class BarcodeScannerFragment extends Fragment {
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
                 Log.d(LOG_TAG, "No camera selected");
+            }
+        });
+
+        mHolder.processBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // TODO
             }
         });
 
@@ -110,19 +118,35 @@ public class BarcodeScannerFragment extends Fragment {
         // processBarcode(bitmap);
     }
 
-    private void changeCamera(int cameraId) {
-        if (mCamera != null) {
-            mCamera.release();
-            mCamera = null;
-        }
+    @Override
+    public void onPause() {
+        super.onPause();
 
-        if (mCamera == null) {
-            mCamera = CameraUtility.getCameraInstance(getActivity(), cameraId);
-            if (mCamera != null) {
-                mHolder.cameraFrm.addView(new CameraPreview(getActivity(), mCamera));
-            } else {
-                Log.e(LOG_TAG, "Unable to access camera " + cameraId);
-            }
+        // Unbind service
+        unbindService();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        // Bind to service
+        Intent intent = new Intent(getActivity(), CameraService.class);
+        getActivity().startService(intent);
+        getActivity().bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    private void configureCameraSpinner() {
+        mCameraAdapter = new CameraAdapter(getActivity());
+        if (mServiceBound) {
+            mCameraAdapter.addAll(mBoundService.getCameraArray());
+        }
+        mHolder.cameraSpn.setAdapter(mCameraAdapter);
+    }
+
+    private void changeCamera(int cameraId) {
+        if (mServiceBound) {
+            mBoundService.changeCamera(cameraId, mHolder.cameraFrm);
         }
     }
 
@@ -146,6 +170,16 @@ public class BarcodeScannerFragment extends Fragment {
         mHolder.outputTv.setText(thisCode.rawValue);
     }
 
+    /**
+     * Unbinds camera service.
+     */
+    private void unbindService() {
+        if (mServiceBound) {
+            getActivity().unbindService(mServiceConnection);
+            mServiceBound = false;
+        }
+    }
+
     private class ViewHolder {
         public Button processBtn;
         public ImageView barcodeIv;
@@ -153,4 +187,28 @@ public class BarcodeScannerFragment extends Fragment {
         public Spinner cameraSpn;
         public FrameLayout cameraFrm;
     }
+
+    /**
+     * Manages connection to camera service.
+     */
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mServiceBound = false;
+            Log.d(LOG_TAG, "Disconnected (" + name.getClassName() + ")");
+        }
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            // Save server binding
+            CameraService.CameraBinder cameraBinder = (CameraService.CameraBinder)service;
+            mBoundService = cameraBinder.getService();
+            mServiceBound = true;
+            Log.d(LOG_TAG, "Connected (" + name.getClassName() + ")");
+
+            // Reinitialize camera spinner choices
+            configureCameraSpinner();
+        }
+    };
 }

@@ -5,7 +5,7 @@
  * Author: Ron Roff (rroff@roff.us)
  * Creation Date: 9/4/2015
  */
-package rroff.roff.us.barcodereader;
+package us.roff.rroff.barcodereader;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -36,11 +36,11 @@ import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 
-import rroff.roff.us.barcodereader.camera.CameraAdapter;
-import rroff.roff.us.barcodereader.camera.CameraPreview;
-import rroff.roff.us.barcodereader.camera.CameraUtility;
-import rroff.roff.us.barcodereader.camera.service.CameraConnection;
-import rroff.roff.us.barcodereader.camera.service.CameraService;
+import us.roff.rroff.barcodereader.camera.CameraAdapter;
+import us.roff.rroff.barcodereader.camera.CameraPreview;
+import us.roff.rroff.barcodereader.camera.CameraUtility;
+import us.roff.rroff.barcodereader.camera.service.CameraConnection;
+import us.roff.rroff.barcodereader.camera.service.CameraService;
 
 public class BarcodeScannerFragment extends Fragment
         implements SharedPreferences.OnSharedPreferenceChangeListener {

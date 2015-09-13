@@ -5,7 +5,7 @@
  * Author: Ron Roff (rroff@roff.us)
  * Creation Date: 9/3/2015
  */
-package rroff.roff.us.barcodereader;
+package us.roff.rroff.barcodereader;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;

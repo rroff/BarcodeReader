@@ -5,13 +5,13 @@
  * Author: Ron Roff (rroff@roff.us)
  * Creation Date: 9/13/2015
  */
-package rroff.roff.us.barcodereader.camera.service;
+package us.roff.rroff.barcodereader.camera.service;
 
 import android.hardware.Camera;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import rroff.roff.us.barcodereader.camera.CameraUtility;
+import us.roff.rroff.barcodereader.camera.CameraUtility;
 
 /**
  * Thread to manage camera access for service.

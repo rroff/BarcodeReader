@@ -5,7 +5,7 @@
  * Author: Ron Roff (rroff@roff.us)
  * Creation Date: 9/11/2015
  */
-package rroff.roff.us.barcodereader.camera;
+package us.roff.rroff.barcodereader.camera;
 
 import android.content.Context;
 import android.hardware.Camera;
@@ -15,7 +15,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
-import rroff.roff.us.barcodereader.R;
+import us.roff.rroff.barcodereader.R;
 
 public class CameraAdapter extends ArrayAdapter<Camera.CameraInfo> {
 

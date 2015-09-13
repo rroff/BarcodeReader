@@ -62,9 +62,7 @@ public class CameraService extends Service {
         if (mCamera == null) {
             mCamera = CameraUtility.getCameraInstance(this, cameraId);
             if (mCamera != null) {
-                if (previewFrame != null) {
-                    previewFrame.addView(new CameraPreview(this, mCamera));
-                }
+                setPreviewFrame(previewFrame);
             } else {
                 Log.e(LOG_TAG, "Unable to access camera " + cameraId);
             }
@@ -73,6 +71,20 @@ public class CameraService extends Service {
 
     public Camera.CameraInfo[] getCameraArray() {
         return mCameraArray;
+    }
+
+    public CameraPreview setPreviewFrame(FrameLayout previewFrame) {
+        CameraPreview cameraPreview = null;
+
+        if ((mCamera != null) && (previewFrame != null)) {
+            cameraPreview = new CameraPreview(this, mCamera);
+            previewFrame.removeAllViews();
+            previewFrame.addView(cameraPreview);
+        } else {
+            Log.e(LOG_TAG, "Error attaching preview to frame");
+        }
+
+        return cameraPreview;
     }
 
     public class CameraBinder extends Binder {

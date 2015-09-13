@@ -1,3 +1,10 @@
+/*
+ * Copyright(c) 2015 Ron Roff
+ * All Rights Reserved.
+ *
+ * Author: Ron Roff (rroff@roff.us)
+ * Creation Date: 9/11/2015
+ */
 package rroff.roff.us.barcodereader.camera;
 
 import android.content.Context;
@@ -8,12 +15,18 @@ import android.util.Log;
 public class CameraUtility {
     private static final String LOG_TAG = CameraUtility.class.getSimpleName();
 
+    public static final int NO_CAMERA = -1;
+
     public static boolean isCameraPresent(Context context) {
         boolean hasCamera = false;
         if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)){
             hasCamera = true;
         }
         return hasCamera;
+    }
+
+    public static int getActiveCamera() {
+        return NO_CAMERA;
     }
 
     public static Camera.CameraInfo[] getCameraArray(Context context) {

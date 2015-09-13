@@ -4,4 +4,6 @@
     <string name="action_settings">Settings</string>
 
     <string name="process_button_label">PROCESS</string>
+
+    <string name="pref_active_camera_key" translatable="false">active_camera</string>
 </resources>

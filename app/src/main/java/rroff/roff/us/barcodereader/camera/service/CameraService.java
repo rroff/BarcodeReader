@@ -1,35 +1,38 @@
+/*
+ * Copyright(c) 2015 Ron Roff
+ * All Rights Reserved.
+ *
+ * Author: Ron Roff (rroff@roff.us)
+ * Creation Date: 9/12/2015
+ */
 package rroff.roff.us.barcodereader.camera.service;
 
 import android.app.Service;
 import android.content.Intent;
 import android.hardware.Camera;
+import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.util.Log;
-import android.widget.FrameLayout;
 
-import rroff.roff.us.barcodereader.camera.CameraPreview;
 import rroff.roff.us.barcodereader.camera.CameraUtility;
 
-/**
- * Created by rroff on 9/12/2015.
- */
 public class CameraService extends Service {
 
     private static final String LOG_TAG = CameraService.class.getName();
 
     private IBinder mBinder = new CameraBinder();
 
-    private Camera.CameraInfo[] mCameraArray;
-
-    private Camera mCamera;
+    private CameraServiceTask mServiceThread;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        mCameraArray = CameraUtility.getCameraArray(this);
-        mCamera = null;
+
+        // Start management thread
+        mServiceThread = new CameraServiceTask(this);
+        mServiceThread.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     @Nullable
@@ -50,41 +53,62 @@ public class CameraService extends Service {
 
     @Override
     public void onDestroy() {
+        if (mServiceThread != null) {
+            mServiceThread.terminate();
+        }
         super.onDestroy();
     }
 
-    public void changeCamera(int cameraId, FrameLayout previewFrame) {
-        if (mCamera != null) {
-            mCamera.release();
-            mCamera = null;
+    public void changeCamera(int cameraId) {
+        if (mServiceThread != null) {
+            mServiceThread.changeCamera(cameraId);
+        } else {
+            Log.w(LOG_TAG, "Camera management thread unavailable");
+        }
+    }
+
+    public Camera getActiveCamera() {
+        Camera camera = null;
+
+        if (mServiceThread != null) {
+            camera = mServiceThread.getActiveCamera();
         }
 
-        if (mCamera == null) {
-            mCamera = CameraUtility.getCameraInstance(this, cameraId);
-            if (mCamera != null) {
-                setPreviewFrame(previewFrame);
-            } else {
-                Log.e(LOG_TAG, "Unable to access camera " + cameraId);
-            }
+        return camera;
+    }
+
+    public int getActiveCameraId() {
+        int cameraId;
+
+        if (mServiceThread != null) {
+            cameraId = mServiceThread.getActiveCameraId();
+        } else {
+            cameraId = CameraUtility.NO_CAMERA;
         }
+
+        return cameraId;
     }
 
     public Camera.CameraInfo[] getCameraArray() {
-        return mCameraArray;
-    }
+        Camera.CameraInfo[] cameraArray = null;
 
-    public CameraPreview setPreviewFrame(FrameLayout previewFrame) {
-        CameraPreview cameraPreview = null;
-
-        if ((mCamera != null) && (previewFrame != null)) {
-            cameraPreview = new CameraPreview(this, mCamera);
-            previewFrame.removeAllViews();
-            previewFrame.addView(cameraPreview);
-        } else {
-            Log.e(LOG_TAG, "Error attaching preview to frame");
+        if (mServiceThread != null) {
+            cameraArray = mServiceThread.getCameraArray();
         }
 
-        return cameraPreview;
+        return cameraArray;
+    }
+
+    public void registerCameraListener(CameraConnection listener) {
+        if (mServiceThread != null) {
+            mServiceThread.registerCameraListener(listener);
+        }
+    }
+
+    public void unregisterCameraListener(CameraConnection listener) {
+        if (mServiceThread != null) {
+            mServiceThread.unregisterCameraListener(listener);
+        }
     }
 
     public class CameraBinder extends Binder {

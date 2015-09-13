@@ -11,10 +11,13 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -34,9 +37,13 @@ import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 
 import rroff.roff.us.barcodereader.camera.CameraAdapter;
+import rroff.roff.us.barcodereader.camera.CameraPreview;
+import rroff.roff.us.barcodereader.camera.CameraUtility;
+import rroff.roff.us.barcodereader.camera.service.CameraConnection;
 import rroff.roff.us.barcodereader.camera.service.CameraService;
 
-public class BarcodeScannerFragment extends Fragment {
+public class BarcodeScannerFragment extends Fragment
+        implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private final String LOG_TAG = BarcodeScannerFragment.class.getSimpleName();
 
@@ -69,6 +76,7 @@ public class BarcodeScannerFragment extends Fragment {
         mDetector = new BarcodeDetector.Builder(getActivity())
                 .setBarcodeFormats(Barcode.DATA_MATRIX | Barcode.QR_CODE)
                 .build();
+
     }
 
     @Nullable
@@ -120,20 +128,41 @@ public class BarcodeScannerFragment extends Fragment {
 
     @Override
     public void onPause() {
-        super.onPause();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        prefs.unregisterOnSharedPreferenceChangeListener(this);
 
         // Unbind service
         unbindService();
+
+        super.onPause();
     }
 
     @Override
     public void onResume() {
-        super.onResume();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        prefs.registerOnSharedPreferenceChangeListener(this);
 
         // Bind to service
         Intent intent = new Intent(getActivity(), CameraService.class);
         getActivity().startService(intent);
         getActivity().bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
+
+        super.onResume();
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals(getString(R.string.pref_active_camera_key))) {
+            mHolder.cameraFrm.removeAllViews();
+
+            if (mServiceBound) {
+                Camera camera = mBoundService.getActiveCamera();
+                if (camera != null) {
+                    CameraPreview cameraPreview = new CameraPreview(getActivity(), camera);
+                    mHolder.cameraFrm.addView(cameraPreview);
+                }
+            }
+        }
     }
 
     private void configureCameraSpinner() {
@@ -146,7 +175,7 @@ public class BarcodeScannerFragment extends Fragment {
 
     private void changeCamera(int cameraId) {
         if (mServiceBound) {
-            mBoundService.changeCamera(cameraId, mHolder.cameraFrm);
+            mBoundService.changeCamera(cameraId);
         }
     }
 
@@ -171,10 +200,23 @@ public class BarcodeScannerFragment extends Fragment {
     }
 
     /**
+     * Changes value for Active Camera in Shared Preferences in order to wake up listener.
+     *
+     * @param activeCameraId ID of Active Camera
+     */
+    private void setActiveCamera(int activeCameraId) {
+        SharedPreferences.Editor editor
+                = PreferenceManager.getDefaultSharedPreferences(getActivity()).edit();
+        editor.putInt(getString(R.string.pref_active_camera_key), activeCameraId);
+        editor.commit();
+    }
+
+    /**
      * Unbinds camera service.
      */
     private void unbindService() {
         if (mServiceBound) {
+            mBoundService.unregisterCameraListener(mCameraConnection);
             getActivity().unbindService(mServiceConnection);
             mServiceBound = false;
         }
@@ -187,6 +229,20 @@ public class BarcodeScannerFragment extends Fragment {
         public Spinner cameraSpn;
         public FrameLayout cameraFrm;
     }
+
+    private CameraConnection mCameraConnection = new CameraConnection() {
+        @Override
+        public void onCameraConnected() {
+            if (mServiceBound) {
+                setActiveCamera(mBoundService.getActiveCameraId());
+            }
+        }
+
+        @Override
+        public void onCameraDisconnected() {
+            setActiveCamera(CameraUtility.NO_CAMERA);
+        }
+    };
 
     /**
      * Manages connection to camera service.
@@ -206,6 +262,9 @@ public class BarcodeScannerFragment extends Fragment {
             mBoundService = cameraBinder.getService();
             mServiceBound = true;
             Log.d(LOG_TAG, "Connected (" + name.getClassName() + ")");
+
+            setActiveCamera(mBoundService.getActiveCameraId());
+            mBoundService.registerCameraListener(mCameraConnection);
 
             // Reinitialize camera spinner choices
             configureCameraSpinner();

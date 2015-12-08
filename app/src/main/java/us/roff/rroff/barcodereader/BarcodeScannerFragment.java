@@ -204,9 +204,8 @@ public class BarcodeScannerFragment extends Fragment
     }
 
     private void processBarcode(Bitmap bitmap) {
-        Log.d(LOG_TAG, "Starting barcode processing");
+        Log.d(LOG_TAG, "Processing captured image");
         mHolder.barcodeIv.setImageBitmap(bitmap);
-        Log.d(LOG_TAG, "Bitmap loaded");
 
         // NOTE from Google Code Lab: It’s possible that, the first time our barcode detector runs,
         // Google Play Services won’t be ready to process barcodes yet.  So we need to check if our

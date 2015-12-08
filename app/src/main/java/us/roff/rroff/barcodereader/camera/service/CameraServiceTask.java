@@ -9,7 +9,10 @@ package us.roff.rroff.barcodereader.camera.service;
 
 import android.hardware.Camera;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.util.Log;
+
+import java.util.List;
 
 import us.roff.rroff.barcodereader.camera.CameraUtility;
 
@@ -130,6 +133,16 @@ public class CameraServiceTask extends AsyncTask<Void, Void, Void> {
         // Verify new camera is connected and change internal settings
         if (mCamera != null) {
             mActiveCameraId = mSelectedCameraId;
+
+            Camera.Parameters parameters = mCamera.getParameters();
+            List<String> supportedFocusModes = parameters.getSupportedFocusModes();
+            if (  android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH
+               && supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            } else {
+                parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            }
+            mCamera.setParameters(parameters);
 
             if (mCameraListener != null) {
                 mCameraListener.onCameraConnected();

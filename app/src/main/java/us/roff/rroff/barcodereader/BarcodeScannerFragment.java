@@ -26,6 +26,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -36,7 +37,6 @@ import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.barcode.Barcode;
 import com.google.android.gms.vision.barcode.BarcodeDetector;
 
-import us.roff.rroff.barcodereader.camera.CameraAdapter;
 import us.roff.rroff.barcodereader.camera.CameraPreview;
 import us.roff.rroff.barcodereader.camera.CameraUtility;
 import us.roff.rroff.barcodereader.camera.service.CameraConnection;
@@ -57,7 +57,7 @@ public class BarcodeScannerFragment extends Fragment
      */
     private boolean mServiceBound = false;
 
-    private CameraAdapter mCameraAdapter;
+    private ArrayAdapter<String> mCameraAdapter;
 
     private BarcodeDetector mDetector;
 
@@ -74,7 +74,7 @@ public class BarcodeScannerFragment extends Fragment
         super.onCreate(savedInstanceState);
 
         mDetector = new BarcodeDetector.Builder(getActivity())
-                .setBarcodeFormats(Barcode.DATA_MATRIX | Barcode.QR_CODE)
+                .setBarcodeFormats(Barcode.EAN_8 | Barcode.EAN_13 | Barcode.ISBN)
                 .build();
 
     }
@@ -108,7 +108,25 @@ public class BarcodeScannerFragment extends Fragment
         mHolder.processBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // TODO
+                if (mServiceBound) {
+                    Camera camera = mBoundService.getActiveCamera();
+                    if (camera != null) {
+                        camera.takePicture(
+                                null,
+                                null,
+                                new Camera.PictureCallback() {
+                                    @Override
+                                    public void onPictureTaken(byte[] data, Camera camera) {
+                                        if (data != null) {
+                                            Bitmap bmp = BitmapFactory.decodeByteArray(data, 0, data.length);
+                                            processBarcode(bmp);
+                                        } else {
+                                            Log.e(LOG_TAG, "Unable to capture image");
+                                        }
+                                    }
+                                });
+                    }
+                }
             }
         });
 
@@ -166,9 +184,15 @@ public class BarcodeScannerFragment extends Fragment
     }
 
     private void configureCameraSpinner() {
-        mCameraAdapter = new CameraAdapter(getActivity());
+        mCameraAdapter = new ArrayAdapter<String>(getActivity(), R.layout.list_item_cameras);
         if (mServiceBound) {
-            mCameraAdapter.addAll(mBoundService.getCameraArray());
+            Camera.CameraInfo[] cameraArray = mBoundService.getCameraArray();
+
+            for (int position = 0; position < cameraArray.length; ++position) {
+                String cameraName = position + " - "
+                        + (cameraArray[position].facing == Camera.CameraInfo.CAMERA_FACING_FRONT ? "Front" : "Back");
+                mCameraAdapter.add(cameraName);
+            }
         }
         mHolder.cameraSpn.setAdapter(mCameraAdapter);
     }
@@ -180,7 +204,9 @@ public class BarcodeScannerFragment extends Fragment
     }
 
     private void processBarcode(Bitmap bitmap) {
+        Log.d(LOG_TAG, "Starting barcode processing");
         mHolder.barcodeIv.setImageBitmap(bitmap);
+        Log.d(LOG_TAG, "Bitmap loaded");
 
         // NOTE from Google Code Lab: It’s possible that, the first time our barcode detector runs,
         // Google Play Services won’t be ready to process barcodes yet.  So we need to check if our
@@ -195,8 +221,12 @@ public class BarcodeScannerFragment extends Fragment
         Frame frame = new Frame.Builder().setBitmap(bitmap).build();
         SparseArray<Barcode> barcodes = mDetector.detect(frame);
 
-        Barcode thisCode = barcodes.valueAt(0);
-        mHolder.outputTv.setText(thisCode.rawValue);
+        if (barcodes.size() > 0) {
+            Barcode thisCode = barcodes.valueAt(0);
+            mHolder.outputTv.setText(thisCode.rawValue);
+        } else {
+            Log.d(LOG_TAG, "No barcodes found");
+        }
     }
 
     /**
